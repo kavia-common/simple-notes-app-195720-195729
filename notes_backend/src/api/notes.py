@@ -4,7 +4,7 @@ import sqlite3
 from datetime import datetime
 from typing import List, Optional
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Response, status
 from pydantic import BaseModel, Field
 
 from src.api.db import get_connection
@@ -190,18 +190,21 @@ def update_note(note_id: int, payload: NoteUpdate) -> NoteOut:
 @router.delete(
     "/{note_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
     summary="Delete note",
     description="Deletes a note by id.",
     operation_id="delete_note",
 )
-def delete_note(note_id: int) -> None:
-    """Delete a note by ID."""
+def delete_note(note_id: int) -> Response:
+    """Delete a note by ID. Returns HTTP 204 with an empty body on success."""
     try:
         with get_connection() as conn:
             cur = conn.execute("DELETE FROM notes WHERE id = ?", (note_id,))
             if cur.rowcount == 0:
                 raise HTTPException(status_code=404, detail="Note not found")
-            return None
+
+        # Explicit empty response (FastAPI enforces: 204 must not have a body).
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
     except HTTPException:
         raise
     except sqlite3.Error as e:
